@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useAuth } from '@/contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +44,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const [current, setCurrent] = useState(0);
   const flatRef = useRef<FlatList>(null);
+  const { login } = useAuth();
 
   const goNext = () => {
     Haptics.selectionAsync();
@@ -116,6 +118,18 @@ export default function OnboardingScreen() {
             <Text style={{ color: colors.primary, fontFamily: 'Inter_600SemiBold' }}>Se connecter</Text>
           </Text>
         </Pressable>
+
+        {/* Test shortcut */}
+        <Pressable
+          style={[styles.testBtn, { backgroundColor: colors.muted, borderRadius: colors.radius }]}
+          onPress={async () => {
+            await login('test@fretconnect.ci', 'test1234');
+            router.replace('/(tabs)');
+          }}
+        >
+          <Feather name="zap" size={14} color={colors.primary} />
+          <Text style={[styles.testText, { color: colors.primary }]}>Connexion rapide (mode test)</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -145,4 +159,9 @@ const styles = StyleSheet.create({
   nextText: { fontSize: 16, fontFamily: 'Inter_600SemiBold', color: '#FFF' },
   skipBtn: { alignItems: 'center' },
   skipText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
+  testBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 7, height: 42, paddingHorizontal: 20, width: '100%',
+  },
+  testText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
 });

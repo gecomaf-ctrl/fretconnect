@@ -107,6 +107,19 @@ export default function LoginScreen() {
             <Feather name="smartphone" size={18} color={colors.foreground} />
             <Text style={[styles.otpText, { color: colors.foreground }]}>Connexion par OTP</Text>
           </Pressable>
+
+          {/* ── Test shortcut ── */}
+          <Pressable
+            style={[styles.testBtn, { backgroundColor: colors.muted, borderRadius: colors.radius }]}
+            onPress={async () => {
+              setLoading(true);
+              await login('test@fretconnect.ci', 'test1234');
+              router.replace('/(tabs)');
+            }}
+          >
+            <Feather name="zap" size={15} color={colors.primary} />
+            <Text style={[styles.testText, { color: colors.primary }]}>Connexion rapide (mode test)</Text>
+          </Pressable>
         </View>
 
         {/* Footer */}
@@ -144,4 +157,9 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 32 },
   footerText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
   registerLink: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  testBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, height: 46, marginTop: 4,
+  },
+  testText: { fontSize: 14, fontFamily: 'Inter_500Medium' },
 });
