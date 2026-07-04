@@ -1,0 +1,1 @@
+- [react-native-maps web fix](fretconnect-react-native-maps-web.md) — use platform-specific files (NativeMap.native.tsx / NativeMap.tsx) not conditional require(); Metro bundles require() on web regardless.
