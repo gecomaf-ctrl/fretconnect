@@ -28,6 +28,7 @@ function RootLayoutNav() {
       <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="shipper/publish" options={{ presentation: 'modal', headerShown: false }} />
       <Stack.Screen name="shipper/freight/[id]" options={{ headerShown: false }} />
+      <Stack.Screen name="shipper/tracking/[id]" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
       <Stack.Screen name="carrier/mission/[id]" options={{ headerShown: false }} />
     </Stack>
   );

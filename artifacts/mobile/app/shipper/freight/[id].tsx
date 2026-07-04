@@ -71,7 +71,7 @@ export default function FreightDetailScreen() {
           <View style={styles.detailGrid}>
             {[
               { icon: 'package', label: 'Marchandise', value: freight.cargo },
-              { icon: 'weight', label: 'Poids', value: `${freight.weight.toLocaleString()} kg` },
+              { icon: 'layers', label: 'Poids', value: `${freight.weight.toLocaleString()} kg` },
               { icon: 'truck', label: 'Véhicule', value: freight.vehicleType },
               { icon: 'credit-card', label: 'Budget', value: formatCFA(freight.budget) },
             ].map(item => (
@@ -149,7 +149,7 @@ export default function FreightDetailScreen() {
             </View>
             <Button
               label="Suivre en temps réel"
-              onPress={() => {}}
+              onPress={() => router.push(`/shipper/tracking/${freight.id}`)}
               size="sm"
               style={styles.trackBtn}
             />
