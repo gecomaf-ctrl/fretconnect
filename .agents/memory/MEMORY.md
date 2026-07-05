@@ -1,1 +1,2 @@
 - [react-native-maps web fix](fretconnect-react-native-maps-web.md) — use platform-specific files (NativeMap.native.tsx / NativeMap.tsx) not conditional require(); Metro bundles require() on web regardless.
+- [expo-google-fonts web fix](expo-google-fonts-web.md) — CDN times out on Replit web; copy TTFs locally and load via expo-font require() instead.
