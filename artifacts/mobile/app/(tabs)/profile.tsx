@@ -294,24 +294,78 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Account menu */}
-      <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginLeft: 16, marginBottom: 6, marginTop: 8 }]}>COMPTE</Text>
+      {/* ── Shipper menu ── */}
+      {!isCarrierActive && (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginLeft: 16, marginBottom: 6, marginTop: 8 }]}>
+            EXPÉDITEUR
+          </Text>
+          <View style={[styles.menuCard, { borderColor: colors.border }]}>
+            <MenuRow
+              icon="package"
+              label="Mes frets publiés"
+              value={`${user.shipper.freightCount} frets`}
+              onPress={() => router.push('/(tabs)/freight')}
+            />
+            <MenuRow
+              icon="credit-card"
+              label="Wallet expéditeur"
+              value={formatCFA(activeShipperWallet)}
+              onPress={() => router.push('/wallet')}
+            />
+            <MenuRow
+              icon="star"
+              label="Mes évaluations"
+              value={`${user.shipper.rating.toFixed(1)} ★`}
+              onPress={() => {}}
+            />
+            <MenuRow icon="file-text" label="Mes documents" onPress={() => {}} />
+          </View>
+        </>
+      )}
+
+      {/* ── Carrier menu ── */}
+      {isCarrierActive && carrierApproved && (
+        <>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginLeft: 16, marginBottom: 6, marginTop: 8 }]}>
+            CHAUFFEUR
+          </Text>
+          <View style={[styles.menuCard, { borderColor: colors.border }]}>
+            <MenuRow
+              icon="map"
+              label="Mes missions"
+              value={`${user.carrier?.missionCount ?? 0} missions`}
+              onPress={() => router.push('/(tabs)/freight')}
+            />
+            <MenuRow
+              icon="credit-card"
+              label="Wallet chauffeur"
+              value={formatCFA(activeCarrierWallet)}
+              onPress={() => router.push('/wallet')}
+            />
+            <MenuRow
+              icon="star"
+              label="Mes évaluations"
+              value={`${(user.carrier?.rating ?? 5).toFixed(1)} ★`}
+              onPress={() => {}}
+            />
+            <MenuRow icon="truck" label="Mon véhicule" onPress={() => {}} />
+            <MenuRow icon="shield" label="Documents chauffeur" onPress={() => {}} />
+            <MenuRow icon="bar-chart-2" label="Mes statistiques" onPress={() => {}} />
+          </View>
+        </>
+      )}
+
+      {/* ── Common menu ── */}
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginLeft: 16, marginBottom: 6, marginTop: 8 }]}>GÉNÉRAL</Text>
       <View style={[styles.menuCard, { borderColor: colors.border }]}>
-        <MenuRow
-          icon="credit-card"
-          label="Mon Wallet"
-          value={formatCFA(isCarrierActive ? activeCarrierWallet : activeShipperWallet)}
-          onPress={() => router.push('/wallet')}
-        />
-        <MenuRow icon="file-text" label="Mes documents" onPress={() => {}} />
-        <MenuRow icon="star" label="Mes évaluations" onPress={() => {}}
-          value={`${(isCarrierActive ? user.carrier?.rating ?? 5 : user.shipper.rating).toFixed(1)} ★`} />
-        <MenuRow icon="settings" label="Paramètres" onPress={() => {}} />
+        <MenuRow icon="settings" label="Paramètres du compte" onPress={() => {}} />
+        <MenuRow icon="bell" label="Notifications" onPress={() => {}} />
+        <MenuRow icon="help-circle" label="Aide et support" onPress={() => {}} />
       </View>
 
       <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginLeft: 16, marginBottom: 6, marginTop: 8 }]}>SESSION</Text>
       <View style={[styles.menuCard, { borderColor: colors.border }]}>
-        <MenuRow icon="help-circle" label="Aide et support" onPress={() => {}} />
         <MenuRow icon="log-out" label="Se déconnecter" onPress={handleLogout} danger />
       </View>
     </ScrollView>
