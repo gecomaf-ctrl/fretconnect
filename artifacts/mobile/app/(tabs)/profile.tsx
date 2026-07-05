@@ -349,9 +349,9 @@ export default function ProfileScreen() {
               value={`${(user.carrier?.rating ?? 5).toFixed(1)} ★`}
               onPress={() => {}}
             />
-            <MenuRow icon="truck" label="Mon véhicule" onPress={() => {}} />
-            <MenuRow icon="shield" label="Documents chauffeur" onPress={() => {}} />
-            <MenuRow icon="bar-chart-2" label="Mes statistiques" onPress={() => {}} />
+            <MenuRow icon="truck" label="Mon véhicule" onPress={() => router.push('/carrier/vehicle')} />
+            <MenuRow icon="shield" label="Documents chauffeur" onPress={() => router.push('/carrier/vehicle')} />
+            <MenuRow icon="bar-chart-2" label="Revenus" onPress={() => router.push('/carrier/revenue')} />
           </View>
         </>
       )}
