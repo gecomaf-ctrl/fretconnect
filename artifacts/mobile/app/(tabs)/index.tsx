@@ -143,9 +143,9 @@ export default function HomeScreen() {
           {isCarrier ? (
             <>
               <ActionTile icon="list" label="Mes missions" onPress={() => router.push('/(tabs)/freight')} />
-              <ActionTile icon="truck" label="Véhicules" onPress={() => router.push('/(tabs)/freight')} />
+              <ActionTile icon="truck" label="Véhicules" onPress={() => router.push('/carrier/vehicle')} />
               <ActionTile icon="credit-card" label="Wallet" onPress={() => router.push('/wallet')} />
-              <ActionTile icon="bar-chart-2" label="Revenus" onPress={() => router.push('/(tabs)/freight')} />
+              <ActionTile icon="bar-chart-2" label="Revenus" onPress={() => router.push('/carrier/revenue')} />
             </>
           ) : (
             <>
