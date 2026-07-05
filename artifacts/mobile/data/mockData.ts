@@ -103,6 +103,13 @@ export const MOCK_MISSIONS: Mission[] = [
     offersCount: 0, ownerId: 'user_5', ownerName: 'Moussa Touré',
     missionStatus: 'available',
   },
+  {
+    id: 'm5', origin: 'Abidjan, Treichville', destination: 'Yamoussoukro',
+    cargo: 'Produits pharmaceutiques', weight: 900, distance: 248, budget: 195000,
+    status: 'carrier_selected', date: '2026-07-05', vehicleType: 'Camionnette',
+    offersCount: 1, ownerId: 'user_6', ownerName: 'Koffi Assi',
+    missionStatus: 'accepted', myOfferAmount: 190000,
+  },
 ];
 
 export const MOCK_CONVERSATIONS: Conversation[] = [

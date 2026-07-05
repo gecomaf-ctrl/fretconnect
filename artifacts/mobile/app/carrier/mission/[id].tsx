@@ -6,7 +6,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { MOCK_MISSIONS } from '@/data/mockData';
 import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 function formatCFA(n: number) {
@@ -23,6 +23,10 @@ export default function MissionDetailScreen() {
     mission?.missionStatus === 'offer_sent',
   );
   const [loading, setLoading] = useState(false);
+
+  const isAccepted    = mission?.missionStatus === 'accepted';
+  const isInProgress  = mission?.missionStatus === 'in_progress';
+  const isCompleted   = mission?.missionStatus === 'completed';
 
   if (!mission) return null;
 
@@ -106,8 +110,45 @@ export default function MissionDetailScreen() {
           </View>
         </View>
 
-        {/* Offer section */}
-        {offerSubmitted ? (
+        {/* Accepted — mission confirmed banner */}
+        {isAccepted && (
+          <View style={[styles.acceptedCard, { backgroundColor: colors.success + '10', borderColor: colors.success + '30', borderRadius: colors.radius }]}>
+            <Feather name="check-circle" size={22} color={colors.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.submittedTitle, { color: colors.foreground }]}>Mission confirmée !</Text>
+              <Text style={[styles.submittedSub, { color: colors.mutedForeground }]}>
+                Rémunération : {formatCFA(mission.myOfferAmount ?? mission.budget)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* In progress banner */}
+        {isInProgress && (
+          <View style={[styles.acceptedCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30', borderRadius: colors.radius }]}>
+            <MaterialCommunityIcons name="truck-fast" size={22} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.submittedTitle, { color: colors.foreground }]}>Mission en cours</Text>
+              <Text style={[styles.submittedSub, { color: colors.mutedForeground }]}>Suivi GPS actif</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Completed banner */}
+        {isCompleted && (
+          <View style={[styles.acceptedCard, { backgroundColor: colors.muted, borderColor: colors.border, borderRadius: colors.radius }]}>
+            <Feather name="award" size={22} color={colors.mutedForeground} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.submittedTitle, { color: colors.foreground }]}>Mission terminée</Text>
+              <Text style={[styles.submittedSub, { color: colors.mutedForeground }]}>
+                {formatCFA(mission.myOfferAmount ?? mission.budget)} versés sur votre wallet
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Offer sent */}
+        {offerSubmitted && !isAccepted && !isInProgress && !isCompleted && (
           <View style={[styles.submittedCard, { backgroundColor: colors.success + '10', borderColor: colors.success + '30', borderRadius: colors.radius }]}>
             <Feather name="check-circle" size={22} color={colors.success} />
             <View>
@@ -117,38 +158,53 @@ export default function MissionDetailScreen() {
               </Text>
             </View>
           </View>
-        ) : (
-          mission.missionStatus === 'available' && (
-            <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Faire une offre</Text>
-              <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                Budget indiqué : {formatCFA(mission.budget)}
-              </Text>
-              <View style={[styles.inputRow, { backgroundColor: colors.input, borderColor: colors.border, borderRadius: colors.radius }]}>
-                <TextInput
-                  style={[styles.offerInput, { color: colors.foreground }]}
-                  value={offerAmount}
-                  onChangeText={setOfferAmount}
-                  placeholder="Votre prix en FCFA"
-                  placeholderTextColor={colors.mutedForeground}
-                  keyboardType="numeric"
-                />
-                <Text style={[styles.currency, { color: colors.mutedForeground }]}>FCFA</Text>
-              </View>
+        )}
+
+        {/* Offer form — available only */}
+        {!offerSubmitted && mission.missionStatus === 'available' && (
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Faire une offre</Text>
+            <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+              Budget indiqué : {formatCFA(mission.budget)}
+            </Text>
+            <View style={[styles.inputRow, { backgroundColor: colors.input, borderColor: colors.border, borderRadius: colors.radius }]}>
+              <TextInput
+                style={[styles.offerInput, { color: colors.foreground }]}
+                value={offerAmount}
+                onChangeText={setOfferAmount}
+                placeholder="Votre prix en FCFA"
+                placeholderTextColor={colors.mutedForeground}
+                keyboardType="numeric"
+              />
+              <Text style={[styles.currency, { color: colors.mutedForeground }]}>FCFA</Text>
             </View>
-          )
+          </View>
         )}
       </ScrollView>
 
-      {!offerSubmitted && mission.missionStatus === 'available' && (
+      {/* Bottom CTA — varies by status */}
+      {mission.missionStatus === 'available' && !offerSubmitted && (
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + (Platform.OS === 'web' ? 34 : 16), backgroundColor: colors.card, borderTopColor: colors.border }]}>
+          <Button label="Envoyer mon offre" onPress={handleSubmitOffer} loading={loading} disabled={!offerAmount} fullWidth size="lg" />
+        </View>
+      )}
+
+      {isAccepted && (
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + (Platform.OS === 'web' ? 34 : 16), backgroundColor: colors.card, borderTopColor: colors.border }]}>
           <Button
-            label="Envoyer mon offre"
-            onPress={handleSubmitOffer}
-            loading={loading}
-            disabled={!offerAmount}
-            fullWidth
-            size="lg"
+            label="🚛  Démarrer la mission"
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); router.push(`/carrier/tracking/${mission.id}`); }}
+            fullWidth size="lg"
+          />
+        </View>
+      )}
+
+      {isInProgress && (
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + (Platform.OS === 'web' ? 34 : 16), backgroundColor: colors.card, borderTopColor: colors.border }]}>
+          <Button
+            label="📍  Reprendre le suivi GPS"
+            onPress={() => router.push(`/carrier/tracking/${mission.id}`)}
+            fullWidth size="lg"
           />
         </View>
       )}
@@ -192,6 +248,10 @@ const styles = StyleSheet.create({
   offerInput: { flex: 1, fontSize: 16, fontFamily: 'Inter_400Regular' },
   currency: { fontSize: 14, fontFamily: 'Inter_400Regular' },
   submittedCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    padding: 16, borderWidth: 1,
+  },
+  acceptedCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     padding: 16, borderWidth: 1,
   },

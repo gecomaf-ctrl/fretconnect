@@ -30,6 +30,7 @@ function RootLayoutNav() {
       <Stack.Screen name="carrier/mission/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="carrier/vehicle" options={{ headerShown: false }} />
       <Stack.Screen name="carrier/revenue" options={{ headerShown: false }} />
+      <Stack.Screen name="carrier/tracking/[id]" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
     </Stack>
   );
 }
