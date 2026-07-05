@@ -46,7 +46,7 @@ export default function HomeScreen() {
   const [expanded, setExpanded] = useState(false);
   const sheetHeight = useRef(new Animated.Value(230)).current;
 
-  const isCarrier = user?.mode === 'carrier' && user?.carrierStatus === 'approved';
+  const isCarrier = user?.activeAccount === 'carrier' && user?.carrier?.status === 'approved';
 
   const toggleSheet = () => {
     const toValue = expanded ? 230 : 400;

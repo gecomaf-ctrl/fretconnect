@@ -1,5 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Platform, Alert } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, Pressable,
+  Platform, Alert,
+} from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,15 +12,11 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
-interface MenuRowProps {
-  icon: string;
-  label: string;
-  onPress: () => void;
-  value?: string;
-  danger?: boolean;
-}
+// ─── Reusable components ──────────────────────────────────────────────────────
 
-function MenuRow({ icon, label, onPress, value, danger }: MenuRowProps) {
+function MenuRow({ icon, label, onPress, value, danger }: {
+  icon: string; label: string; onPress: () => void; value?: string; danger?: boolean;
+}) {
   const colors = useColors();
   return (
     <Pressable
@@ -39,16 +38,140 @@ function MenuRow({ icon, label, onPress, value, danger }: MenuRowProps) {
   );
 }
 
+function formatCFA(n: number) {
+  return n.toLocaleString('fr-FR') + ' FCFA';
+}
+
+// ─── Account Card ─────────────────────────────────────────────────────────────
+
+function AccountCard({
+  type,
+  isActive,
+  exists,
+  balance,
+  stat,
+  statLabel,
+  rating,
+  status,
+  onSwitch,
+  onCreate,
+}: {
+  type: 'shipper' | 'carrier';
+  isActive: boolean;
+  exists: boolean;
+  balance?: number;
+  stat?: number;
+  statLabel?: string;
+  rating?: number;
+  status?: string;
+  onSwitch: () => void;
+  onCreate: () => void;
+}) {
+  const colors = useColors();
+  const isCarrier = type === 'carrier';
+
+  if (!exists && isCarrier) {
+    // Carrier not created yet — CTA card
+    return (
+      <Pressable
+        onPress={onCreate}
+        style={[
+          styles.accountCard,
+          styles.accountCardCreate,
+          { borderColor: colors.primary + '40', backgroundColor: colors.primary + '08', borderRadius: colors.radius },
+        ]}
+      >
+        <View style={[styles.accountCardIcon, { backgroundColor: colors.primary + '15' }]}>
+          <MaterialCommunityIcons name="truck-delivery" size={22} color={colors.primary} />
+        </View>
+        <Text style={[styles.accountCardTitle, { color: colors.primary }]}>Compte Chauffeur</Text>
+        <View style={[styles.createBadge, { backgroundColor: colors.primary }]}>
+          <Feather name="plus" size={12} color="#FFF" />
+          <Text style={styles.createBadgeText}>Créer</Text>
+        </View>
+        <Text style={[styles.accountCardHint, { color: colors.mutedForeground }]}>
+          Acceptez des missions{'\n'}et gagnez de l'argent
+        </Text>
+      </Pressable>
+    );
+  }
+
+  const isPending  = status === 'pending' || status === 'corrections';
+  const isApproved = status === 'approved';
+  const isRejected = status === 'rejected';
+
+  return (
+    <Pressable
+      onPress={exists && (!isCarrier || isApproved) ? onSwitch : onCreate}
+      style={[
+        styles.accountCard,
+        {
+          borderColor: isActive ? colors.primary : colors.border,
+          backgroundColor: isActive ? colors.primary + '08' : colors.card,
+          borderRadius: colors.radius,
+          borderWidth: isActive ? 2 : 1,
+        },
+      ]}
+    >
+      {isActive && (
+        <View style={[styles.activePill, { backgroundColor: colors.primary }]}>
+          <Text style={styles.activePillText}>Actif</Text>
+        </View>
+      )}
+
+      <View style={[styles.accountCardIcon, {
+        backgroundColor: isCarrier ? (isActive ? colors.primary : colors.dark + '18') : colors.primary + '15',
+      }]}>
+        <MaterialCommunityIcons
+          name={isCarrier ? 'truck' : 'account-box'}
+          size={22}
+          color={isCarrier ? (isActive ? '#FFF' : colors.foreground) : colors.primary}
+        />
+      </View>
+
+      <Text style={[styles.accountCardTitle, { color: colors.foreground }]}>
+        {isCarrier ? 'Chauffeur' : 'Expéditeur'}
+      </Text>
+
+      {isPending && <StatusBadge status="pending" small />}
+      {isRejected && <StatusBadge status="rejected" small />}
+
+      {(isApproved || !isCarrier) && (
+        <>
+          <Text style={[styles.accountBalance, { color: isActive ? colors.primary : colors.foreground }]}>
+            {formatCFA(balance ?? 0)}
+          </Text>
+          <Text style={[styles.accountStat, { color: colors.mutedForeground }]}>
+            {stat ?? 0} {statLabel} · ★ {(rating ?? 5.0).toFixed(1)}
+          </Text>
+        </>
+      )}
+
+      {isPending && (
+        <Text style={[styles.accountHintSmall, { color: colors.mutedForeground }]}>
+          En cours de vérification
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { user, logout, switchMode, updateUser } = useAuth();
+  const { user, logout, switchAccount, approveCarrier } = useAuth();
   const tabBarOffset = Platform.OS === 'web' ? 84 : 83;
 
   if (!user) return null;
 
-  const isCarrierApproved = user.carrierStatus === 'approved';
-  const isCarrierMode = user.mode === 'carrier' && isCarrierApproved;
+  const isCarrierActive  = user.activeAccount === 'carrier';
+  const carrierApproved  = user.carrier?.status === 'approved';
+  const hasCarrierAccount = !!user.carrier;
+
+  const activeShipperWallet = user.shipper.wallet.balance;
+  const activeCarrierWallet = user.carrier?.wallet.balance ?? 0;
 
   const handleLogout = () => {
     Alert.alert('Déconnexion', 'Voulez-vous vous déconnecter ?', [
@@ -57,9 +180,15 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleModeSwitch = (val: boolean) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    switchMode(val ? 'carrier' : 'shipper');
+  const handleSwitchToCarrier = () => {
+    if (!carrierApproved) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    switchAccount('carrier');
+  };
+
+  const handleSwitchToShipper = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    switchAccount('shipper');
   };
 
   return (
@@ -68,16 +197,13 @@ export default function ProfileScreen() {
       contentContainerStyle={{ paddingBottom: insets.bottom + tabBarOffset + 20 }}
     >
       {/* Header */}
-      <View style={[
-        styles.header,
-        {
-          paddingTop: insets.top + (Platform.OS === 'web' ? 67 : 16),
-          backgroundColor: colors.card,
-          borderBottomColor: colors.border,
-        },
-      ]}>
+      <View style={[styles.header, {
+        paddingTop: insets.top + (Platform.OS === 'web' ? 67 : 16),
+        backgroundColor: colors.card,
+        borderBottomColor: colors.border,
+      }]}>
         <View style={styles.userInfo}>
-          <Avatar name={user.name} size={64} />
+          <Avatar name={user.name} size={60} />
           <View style={styles.userMeta}>
             <Text style={[styles.userName, { color: colors.foreground }]}>{user.name}</Text>
             <Text style={[styles.userEmail, { color: colors.mutedForeground }]}>{user.email}</Text>
@@ -89,15 +215,76 @@ export default function ProfileScreen() {
         </Pressable>
       </View>
 
-      {/* Stats */}
+      {/* ── Dual account switcher ── */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>MES COMPTES</Text>
+        <View style={styles.accountsRow}>
+          {/* Shipper */}
+          <AccountCard
+            type="shipper"
+            isActive={!isCarrierActive}
+            exists
+            balance={activeShipperWallet}
+            stat={user.shipper.freightCount}
+            statLabel="frets"
+            rating={user.shipper.rating}
+            onSwitch={handleSwitchToShipper}
+            onCreate={() => {}}
+          />
+          {/* Carrier */}
+          <AccountCard
+            type="carrier"
+            isActive={isCarrierActive}
+            exists={hasCarrierAccount}
+            balance={activeCarrierWallet}
+            stat={user.carrier?.missionCount}
+            statLabel="missions"
+            rating={user.carrier?.rating}
+            status={user.carrier?.status}
+            onSwitch={handleSwitchToCarrier}
+            onCreate={() => router.push('/become-carrier')}
+          />
+        </View>
+
+        {/* Pending carrier notice */}
+        {user.carrier?.status === 'pending' && (
+          <View style={[styles.pendingNotice, { backgroundColor: colors.warning + '12', borderRadius: colors.radius }]}>
+            <Feather name="clock" size={15} color={colors.warning} />
+            <Text style={[styles.pendingText, { color: colors.warning }]}>
+              Votre dossier chauffeur est en cours de vérification. Vous recevrez une notification dès validation.
+            </Text>
+          </View>
+        )}
+
+        {/* DEV shortcut — approve carrier */}
+        {user.carrier?.status === 'pending' && (
+          <Pressable
+            style={[styles.devBtn, { backgroundColor: colors.success + '15', borderRadius: colors.radius }]}
+            onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); approveCarrier(); }}
+          >
+            <Feather name="zap" size={14} color={colors.success} />
+            <Text style={[styles.devBtnText, { color: colors.success }]}>
+              [Test] Simuler approbation du compte chauffeur
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* Active account stats */}
       <View style={[styles.statsRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <View style={styles.stat}>
-          <Text style={[styles.statValue, { color: colors.foreground }]}>24</Text>
-          <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Frets</Text>
+          <Text style={[styles.statValue, { color: colors.foreground }]}>
+            {isCarrierActive ? (user.carrier?.missionCount ?? 0) : user.shipper.freightCount}
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
+            {isCarrierActive ? 'Missions' : 'Frets'}
+          </Text>
         </View>
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
         <View style={styles.stat}>
-          <Text style={[styles.statValue, { color: colors.foreground }]}>4.8</Text>
+          <Text style={[styles.statValue, { color: colors.foreground }]}>
+            {isCarrierActive ? (user.carrier?.rating ?? 5.0).toFixed(1) : user.shipper.rating.toFixed(1)}
+          </Text>
           <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Note</Text>
         </View>
         <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -107,79 +294,22 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Mode Switch (if carrier approved) */}
-      {isCarrierApproved && (
-        <View style={[styles.modeCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.modeInfo}>
-            <MaterialCommunityIcons
-              name={isCarrierMode ? 'truck' : 'account-box'}
-              size={24}
-              color={colors.primary}
-            />
-            <View>
-              <Text style={[styles.modeTitle, { color: colors.foreground }]}>
-                Mode {isCarrierMode ? 'Transporteur' : 'Expéditeur'}
-              </Text>
-              <Text style={[styles.modeSubtitle, { color: colors.mutedForeground }]}>
-                Basculer vers {isCarrierMode ? 'Expéditeur' : 'Transporteur'}
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={isCarrierMode}
-            onValueChange={handleModeSwitch}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor="#FFF"
-          />
-        </View>
-      )}
-
-      {/* Carrier status (not yet approved) */}
-      {user.carrierStatus !== 'none' && user.carrierStatus !== 'approved' && (
-        <Pressable
-          style={[styles.carrierCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={() => router.push('/become-carrier')}
-        >
-          <View style={styles.carrierInfo}>
-            <MaterialCommunityIcons name="truck-delivery" size={24} color={colors.warning} />
-            <View>
-              <Text style={[styles.modeTitle, { color: colors.foreground }]}>Demande Transporteur</Text>
-              <StatusBadge status={user.carrierStatus} small />
-            </View>
-          </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-        </Pressable>
-      )}
-
-      {/* Menu */}
-      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Compte</Text>
+      {/* Account menu */}
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginLeft: 16, marginBottom: 6, marginTop: 8 }]}>COMPTE</Text>
       <View style={[styles.menuCard, { borderColor: colors.border }]}>
+        <MenuRow
+          icon="credit-card"
+          label="Mon Wallet"
+          value={formatCFA(isCarrierActive ? activeCarrierWallet : activeShipperWallet)}
+          onPress={() => router.push('/wallet')}
+        />
         <MenuRow icon="file-text" label="Mes documents" onPress={() => {}} />
-        <MenuRow icon="credit-card" label="Mon Wallet" onPress={() => router.push('/wallet')} />
-        <MenuRow icon="star" label="Mes évaluations" onPress={() => {}} value="4.8 ★" />
+        <MenuRow icon="star" label="Mes évaluations" onPress={() => {}}
+          value={`${(isCarrierActive ? user.carrier?.rating ?? 5 : user.shipper.rating).toFixed(1)} ★`} />
         <MenuRow icon="settings" label="Paramètres" onPress={() => {}} />
       </View>
 
-      {user.carrierStatus === 'none' && (
-        <>
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Transporteur</Text>
-          <Pressable
-            style={[styles.becomeCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30', borderRadius: colors.radius }]}
-            onPress={() => router.push('/become-carrier')}
-          >
-            <MaterialCommunityIcons name="truck-delivery" size={28} color={colors.primary} />
-            <View style={styles.becomeInfo}>
-              <Text style={[styles.becomeTitle, { color: colors.foreground }]}>Devenir Transporteur</Text>
-              <Text style={[styles.becomeSubtitle, { color: colors.mutedForeground }]}>
-                Commencez à accepter des missions et gagnez de l'argent
-              </Text>
-            </View>
-            <Feather name="arrow-right" size={20} color={colors.primary} />
-          </Pressable>
-        </>
-      )}
-
-      <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>Session</Text>
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginLeft: 16, marginBottom: 6, marginTop: 8 }]}>SESSION</Text>
       <View style={[styles.menuCard, { borderColor: colors.border }]}>
         <MenuRow icon="help-circle" label="Aide et support" onPress={() => {}} />
         <MenuRow icon="log-out" label="Se déconnecter" onPress={handleLogout} danger />
@@ -188,50 +318,63 @@ export default function ProfileScreen() {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    paddingHorizontal: 20, paddingBottom: 20, borderBottomWidth: 1, marginBottom: 16,
+    paddingHorizontal: 20, paddingBottom: 20, borderBottomWidth: 1,
   },
-  userInfo: { flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 },
+  userInfo: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
   userMeta: { gap: 2, flex: 1 },
-  userName: { fontSize: 18, fontFamily: 'Inter_700Bold' },
+  userName: { fontSize: 17, fontFamily: 'Inter_700Bold' },
   userEmail: { fontSize: 13, fontFamily: 'Inter_400Regular' },
   userPhone: { fontSize: 13, fontFamily: 'Inter_400Regular' },
   editBtn: { padding: 10, alignSelf: 'flex-start' },
+
+  section: { paddingHorizontal: 16, paddingTop: 20, gap: 12 },
+  sectionTitle: {
+    fontSize: 11, fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.8, textTransform: 'uppercase',
+  },
+
+  accountsRow: { flexDirection: 'row', gap: 12 },
+  accountCard: {
+    flex: 1, padding: 14, borderWidth: 1,
+    alignItems: 'flex-start', gap: 6, minHeight: 160,
+  },
+  accountCardCreate: { borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  accountCardIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  accountCardTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  accountCardHint: { fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 16 },
+  activePill: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+  activePillText: { fontSize: 10, fontFamily: 'Inter_600SemiBold', color: '#FFF' },
+  createBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  createBadgeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#FFF' },
+  accountBalance: { fontSize: 15, fontFamily: 'Inter_700Bold' },
+  accountStat: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  accountHintSmall: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+
+  pendingNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12 },
+  pendingText: { fontSize: 13, fontFamily: 'Inter_400Regular', flex: 1, lineHeight: 18 },
+
+  devBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12 },
+  devBtnText: { fontSize: 13, fontFamily: 'Inter_500Medium', flex: 1 },
+
   statsRow: {
-    flexDirection: 'row', marginHorizontal: 16, borderRadius: 16,
-    borderWidth: 1, padding: 16, marginBottom: 16,
+    flexDirection: 'row', marginHorizontal: 16, marginTop: 16,
+    borderRadius: 16, borderWidth: 1, padding: 16,
   },
   stat: { flex: 1, alignItems: 'center', gap: 4 },
   statValue: { fontSize: 20, fontFamily: 'Inter_700Bold' },
   statLabel: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   statDivider: { width: 1, marginVertical: 4 },
-  modeCard: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginHorizontal: 16, borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 16,
-  },
-  modeInfo: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  modeTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
-  modeSubtitle: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
-  carrierCard: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginHorizontal: 16, borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 16,
-  },
-  carrierInfo: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  sectionTitle: { fontSize: 12, fontFamily: 'Inter_500Medium', marginLeft: 16, marginBottom: 6, marginTop: 8, textTransform: 'uppercase', letterSpacing: 0.5 },
-  menuCard: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, overflow: 'hidden', marginBottom: 8 },
+
+  menuCard: { marginHorizontal: 16, borderRadius: 16, borderWidth: 1, overflow: 'hidden', marginBottom: 4 },
   menuRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 14, borderBottomWidth: 1, gap: 12 },
   menuIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   menuLabel: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' },
   menuRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   menuValue: { fontSize: 13, fontFamily: 'Inter_400Regular' },
-  becomeCard: {
-    marginHorizontal: 16, borderWidth: 1, padding: 16,
-    flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 8,
-  },
-  becomeInfo: { flex: 1, gap: 4 },
-  becomeTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
-  becomeSubtitle: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
 });

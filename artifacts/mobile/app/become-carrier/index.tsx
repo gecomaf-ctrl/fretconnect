@@ -75,7 +75,7 @@ function DocUploadPlaceholder({ label }: { label: string }) {
 export default function BecomeCarrierScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { submitCarrierRequest, updateUser } = useAuth();
+  const { submitCarrierRequest } = useAuth();
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormData>({
