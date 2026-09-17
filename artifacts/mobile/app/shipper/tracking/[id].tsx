@@ -113,7 +113,7 @@ export default function TrackingScreen() {
       </View>
 
       {/* Map — fills the screen */}
-      <View style={StyleSheet.absoluteFillObject}>
+      <View style={StyleSheet.absoluteFill}>
         <TrackingMap
           origin={origin}
           destination={destination}

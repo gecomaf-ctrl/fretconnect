@@ -15,4 +15,4 @@ Use Expo's platform-specific file resolution instead:
 - `components/NativeMap.tsx` — empty stub for web
 Import `NativeMap` from `@/components/NativeMap` in the screen; Metro automatically picks the right file per platform.
 
-Do NOT add `react-native-maps` to `app.json` plugins (incompatible with Expo Go / pinned to 1.18.0).
+Do NOT add `react-native-maps` to `app.json` plugins. Pin its version to the one required by the installed Expo SDK; for this project on Expo SDK 57, Expo selected 1.27.2.

@@ -104,7 +104,7 @@ export function SignaturePad({ onSigned, borderColor = '#E2E8F0', labelColor = '
         style={[styles.canvas, { borderColor, height }]}
         {...panResponder.panHandlers}
       >
-        <Svg style={StyleSheet.absoluteFillObject}>
+        <Svg style={StyleSheet.absoluteFill}>
           {strokes.map((pts, i) => {
             const corrected = pts.map(p => toLocal(p.x, p.y));
             return (
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   placeholder: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,

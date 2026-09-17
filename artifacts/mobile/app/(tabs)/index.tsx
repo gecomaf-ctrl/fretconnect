@@ -65,7 +65,7 @@ export default function HomeScreen() {
       ) : (
         <LinearGradient
           colors={['#0E1420', '#1A2035', '#253045']}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
       )}
 
@@ -73,7 +73,7 @@ export default function HomeScreen() {
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <LinearGradient
           colors={['rgba(14,20,32,0.85)', 'rgba(14,20,32,0)']}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
         <View style={styles.topBarContent}>
           <View>

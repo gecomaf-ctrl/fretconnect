@@ -483,7 +483,7 @@ export default function CarrierTrackingScreen() {
   return (
     <View style={ss.container}>
       {/* Map */}
-      <View style={StyleSheet.absoluteFillObject}>
+      <View style={StyleSheet.absoluteFill}>
         <TrackingMap
           origin={origin}
           destination={destination}
@@ -725,7 +725,7 @@ const ss = StyleSheet.create({
 
   // ── Modal ──
   modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#F8FAFC',
     zIndex: 50,
   },

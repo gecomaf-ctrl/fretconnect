@@ -62,7 +62,7 @@ export default function TrackingMap({ origin, destination, truckPosition, progre
 
   return (
     <MapView
-      style={StyleSheet.absoluteFillObject}
+      style={StyleSheet.absoluteFill}
       provider={PROVIDER_DEFAULT}
       region={{ latitude: midLat, longitude: midLon, latitudeDelta: latDelta, longitudeDelta: lonDelta }}
     >
