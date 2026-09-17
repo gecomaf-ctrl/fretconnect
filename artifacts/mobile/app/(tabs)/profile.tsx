@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { MenuButton } from '@/components/SideMenu';
 
 // ─── Reusable components ──────────────────────────────────────────────────────
 
@@ -162,7 +163,7 @@ export default function ProfileScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, logout, switchAccount, approveCarrier } = useAuth();
-  const tabBarOffset = Platform.OS === 'web' ? 84 : 83;
+  const tabBarOffset = 20;
 
   if (!user) return null;
 
@@ -202,6 +203,7 @@ export default function ProfileScreen() {
         backgroundColor: colors.card,
         borderBottomColor: colors.border,
       }]}>
+        <MenuButton />
         <View style={styles.userInfo}>
           <Avatar name={user.name} size={60} />
           <View style={styles.userMeta}>

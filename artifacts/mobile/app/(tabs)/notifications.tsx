@@ -5,12 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NotificationItem } from '@/components/NotificationItem';
 import { MOCK_NOTIFICATIONS, AppNotification } from '@/data/mockData';
 import { Feather } from '@expo/vector-icons';
+import { MenuButton } from '@/components/SideMenu';
 
 export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<AppNotification[]>(MOCK_NOTIFICATIONS);
-  const tabBarOffset = Platform.OS === 'web' ? 84 : 83;
+  const tabBarOffset = 20;
 
   const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
@@ -32,7 +33,10 @@ export default function NotificationsScreen() {
           borderBottomColor: colors.border,
         },
       ]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Notifications</Text>
+        <View style={styles.headerLeft}>
+          <MenuButton />
+          <Text style={[styles.title, { color: colors.foreground }]}>Notifications</Text>
+        </View>
         {unreadCount > 0 && (
           <Pressable onPress={markAllRead}>
             <Text style={[styles.markAll, { color: colors.primary }]}>Tout lire</Text>
@@ -69,6 +73,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: { fontSize: 22, fontFamily: 'Inter_700Bold' },
   markAll: { fontSize: 14, fontFamily: 'Inter_500Medium' },
   empty: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 100 },

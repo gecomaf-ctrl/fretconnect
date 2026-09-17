@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Avatar } from '@/components/Avatar';
 import NativeMap from '@/components/NativeMap';
+import { MenuButton } from '@/components/SideMenu';
 
 interface ActionTileProps {
   icon: string;
@@ -55,7 +56,7 @@ export default function HomeScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const tabBarOffset = Platform.OS === 'web' ? 84 : 83;
+  const tabBarOffset = 20;
 
   return (
     <View style={styles.container}>
@@ -76,7 +77,8 @@ export default function HomeScreen() {
           style={StyleSheet.absoluteFill}
         />
         <View style={styles.topBarContent}>
-          <View>
+          <MenuButton color="#FFF" backgroundColor="rgba(255,255,255,0.12)" />
+          <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.brand}>FretConnect</Text>
             <View style={[styles.modeBadge, { backgroundColor: isCarrier ? colors.primary : colors.dark }]}>
               <MaterialCommunityIcons

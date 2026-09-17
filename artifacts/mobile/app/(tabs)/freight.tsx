@@ -9,12 +9,13 @@ import { MOCK_FREIGHTS, MOCK_MISSIONS } from '@/data/mockData';
 import { router } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { MenuButton } from '@/components/SideMenu';
 
 export default function FreightScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const tabBarOffset = Platform.OS === 'web' ? 84 : 83;
+  const tabBarOffset = 20;
 
   const isCarrierActive = user?.activeAccount === 'carrier';
   const isCarrierApproved = user?.carrier?.status === 'approved';
@@ -30,7 +31,9 @@ export default function FreightScreen() {
         styles.header,
         { paddingTop: insets.top + (Platform.OS === 'web' ? 67 : 12), backgroundColor: colors.card, borderBottomColor: colors.border },
       ]}>
-        <View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <MenuButton />
+          <View>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
             {showMissions ? 'Missions disponibles' : 'Mes Frets'}
           </Text>
@@ -40,6 +43,7 @@ export default function FreightScreen() {
           {!isCarrierActive && (
             <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Compte Expéditeur</Text>
           )}
+          </View>
         </View>
         {!showMissions && (
           <Pressable
