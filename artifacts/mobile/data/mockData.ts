@@ -12,11 +12,15 @@ export interface Freight {
   offersCount: number;
   ownerId: string;
   ownerName: string;
+  /** Code shared by the shipper with the recipient for delivery confirmation. */
+  deliveryCode?: string;
 }
 
 export interface Mission extends Freight {
   myOfferAmount?: number;
   missionStatus: 'available' | 'offer_sent' | 'accepted' | 'in_progress' | 'completed';
+  /** 6-digit code generated when mission is accepted; shared by shipper → recipient */
+  deliveryCode?: string;
 }
 
 export interface Conversation {
@@ -64,7 +68,7 @@ export const MOCK_FREIGHTS: Freight[] = [
     id: 'f3', origin: 'Abidjan, Cocody', destination: 'Yamoussoukro',
     cargo: 'Électroménager', weight: 1200, distance: 248, budget: 95000,
     status: 'in_transit', date: '2026-07-04', vehicleType: 'Camionnette',
-    offersCount: 1, ownerId: 'user_1', ownerName: 'Kofi Mensah',
+    offersCount: 1, ownerId: 'user_1', ownerName: 'Kofi Mensah', deliveryCode: '482937',
   },
   {
     id: 'f4', origin: 'Abidjan, Marcory', destination: 'Daloa',
@@ -108,7 +112,7 @@ export const MOCK_MISSIONS: Mission[] = [
     cargo: 'Produits pharmaceutiques', weight: 900, distance: 248, budget: 195000,
     status: 'carrier_selected', date: '2026-07-05', vehicleType: 'Camionnette',
     offersCount: 1, ownerId: 'user_6', ownerName: 'Koffi Assi',
-    missionStatus: 'accepted', myOfferAmount: 190000,
+    missionStatus: 'accepted', myOfferAmount: 190000, deliveryCode: '482937',
   },
 ];
 

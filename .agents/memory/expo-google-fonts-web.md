@@ -1,21 +1,21 @@
 ---
-name: expo-google-fonts web CDN timeout
-description: @expo-google-fonts/* loads from Google CDN on web, which times out in Replit — fix is to use local TTF files.
+name: Expo fonts web loading
+description: FontFaceObserver can block the Replit Expo web preview even with local TTFs; native and web font loading need separate handling.
 ---
 
 ## Rule
-Never use `@expo-google-fonts/<family>` package exports directly with `useFonts` in an Expo web app hosted on Replit.
+Never let Expo web startup depend on `useFonts` completing in an Expo app hosted on Replit. Avoid `@expo-google-fonts/<family>` exports entirely.
 
-**Why:** On web, the package tries to resolve fonts via the Google Fonts CDN. Replit's network blocks or throttles that CDN, causing `FontFaceObserver` to throw "3000ms timeout exceeded" on every load.
+**Why:** The Google Fonts package can resolve through a CDN, and even local TTF loading can leave `FontFaceObserver` waiting in the proxied preview. The resulting 6-second timeout blocks the root layout and appears as a blank screen.
 
 **How to apply:**
-1. Copy the needed `.ttf` files from the pnpm store into `assets/fonts/`:
+1. For native builds, copy the needed `.ttf` files from the pnpm store into `assets/fonts/`:
    ```
    BASE=/home/runner/workspace/node_modules/.pnpm/@expo-google-fonts+inter@0.4.2/node_modules/@expo-google-fonts/inter
    cp "$BASE/400Regular/Inter_400Regular.ttf" artifacts/mobile/assets/fonts/
    # repeat for each weight needed
    ```
-2. Load via `useFonts` from `expo-font` with `require()` paths — do NOT import font constants from the google-fonts package:
+2. Load via `useFonts` from `expo-font` with `require()` paths on native — do NOT import font constants from the google-fonts package:
    ```ts
    import { useFonts } from 'expo-font';
    useFonts({
@@ -23,4 +23,4 @@ Never use `@expo-google-fonts/<family>` package exports directly with `useFonts`
      Inter_700Bold:    require('../assets/fonts/Inter_700Bold.ttf'),
    });
    ```
-3. The root package's `useFonts` re-export works fine on native (Metro asset bundling) but is broken on Expo web in Replit because it resolves to a CDN URL, not the local file.
+3. On web, pass an empty font map (or otherwise use a non-blocking fallback) and let CSS fall back to a system font. Never return `null` from the root layout while waiting for a web font that can time out.

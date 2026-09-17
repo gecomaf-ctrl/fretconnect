@@ -153,6 +153,32 @@ export default function FreightDetailScreen() {
               size="sm"
               style={styles.trackBtn}
             />
+            {!!freight.deliveryCode && (
+              <View style={[styles.deliveryCodeCard, { backgroundColor: colors.card, borderColor: colors.primary + '35' }]}>
+                <View style={styles.deliveryCodeHeader}>
+                  <View style={[styles.deliveryCodeIcon, { backgroundColor: colors.primary + '15' }]}>
+                    <Feather name="key" size={16} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.deliveryCodeTitle, { color: colors.foreground }]}>Code de livraison</Text>
+                    <Text style={[styles.deliveryCodeHint, { color: colors.mutedForeground }]}>
+                      À transmettre au destinataire
+                    </Text>
+                  </View>
+                  <Pressable
+                    style={[styles.shareCodeBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)}
+                  >
+                    <Feather name="share-2" size={15} color="#FFF" />
+                    <Text style={styles.shareCodeText}>Envoyer</Text>
+                  </Pressable>
+                </View>
+                <Text style={[styles.deliveryCode, { color: colors.primary }]}>{freight.deliveryCode}</Text>
+                <Text style={[styles.deliveryCodeFooter, { color: colors.mutedForeground }]}>
+                  Le destinataire devra le saisir et signer à la remise.
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -213,5 +239,14 @@ const styles = StyleSheet.create({
   trackTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   trackSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   trackBtn: { alignSelf: 'flex-start' },
+  deliveryCodeCard: { marginTop: 16, padding: 14, borderWidth: 1, borderRadius: 14, gap: 8 },
+  deliveryCodeHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  deliveryCodeIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  deliveryCodeTitle: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  deliveryCodeHint: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  shareCodeBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9 },
+  shareCodeText: { color: '#FFF', fontSize: 11, fontFamily: 'Inter_600SemiBold' },
+  deliveryCode: { fontSize: 26, letterSpacing: 6, fontFamily: 'Inter_700Bold', textAlign: 'center', marginVertical: 2 },
+  deliveryCodeFooter: { fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'center' },
   bottomBar: { padding: 16, borderTopWidth: 1 },
 });

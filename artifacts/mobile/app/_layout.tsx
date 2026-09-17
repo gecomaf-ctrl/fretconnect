@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useFonts } from 'expo-font';
+import { Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { setBaseUrl } from '@workspace/api-client-react';
@@ -37,10 +38,18 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular: require('../assets/fonts/Inter_400Regular.ttf'),
-    Inter_500Medium:  require('../assets/fonts/Inter_500Medium.ttf'),
-    Inter_600SemiBold: require('../assets/fonts/Inter_600SemiBold.ttf'),
-    Inter_700Bold:    require('../assets/fonts/Inter_700Bold.ttf'),
+    // expo-font uses FontFaceObserver on web. The Replit preview can keep a
+    // local TTF in "loading" state and leave the whole router blank after its
+    // 6-second timeout. Native still loads the bundled Inter files normally;
+    // web uses the browser fallback for the same styles.
+    ...(Platform.OS === 'web'
+      ? {}
+      : {
+          Inter_400Regular: require('../assets/fonts/Inter_400Regular.ttf'),
+          Inter_500Medium:  require('../assets/fonts/Inter_500Medium.ttf'),
+          Inter_600SemiBold: require('../assets/fonts/Inter_600SemiBold.ttf'),
+          Inter_700Bold:    require('../assets/fonts/Inter_700Bold.ttf'),
+        }),
   });
 
   useEffect(() => {
