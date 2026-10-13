@@ -6,7 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useFonts } from 'expo-font';
-import { Platform } from 'react-native';
+import { Platform, View, StyleSheet, useColorScheme } from 'react-native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { setBaseUrl } from '@workspace/api-client-react';
@@ -19,6 +19,11 @@ const apiDomain = process.env.EXPO_PUBLIC_DOMAIN;
 if (apiDomain) setBaseUrl(`https://${apiDomain}`);
 
 const queryClient = new QueryClient();
+
+// On a wide browser window the phone-sized UI used to stretch across the whole
+// viewport. We therefore constrain the app to a mobile-width column and center
+// it, with a neutral "frame" around it.
+const MOBILE_MAX_WIDTH = 480;
 
 function RootLayoutNav() {
   return (
@@ -56,25 +61,66 @@ export default function RootLayout() {
         }),
   });
 
+  const scheme = useColorScheme();
+  const isWeb = Platform.OS === 'web';
+  const outerBackground = scheme === 'dark' ? '#05070C' : '#E6E8EC';
+  const frameBackground = scheme === 'dark' ? '#0E1420' : '#F7F8FA';
+
   useEffect(() => {
     if (fontsLoaded || fontError) SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;
 
+  const appContent = (
+    <KeyboardProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </KeyboardProvider>
+  );
+
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <KeyboardProvider>
-              <AuthProvider>
-                <RootLayoutNav />
-              </AuthProvider>
-            </KeyboardProvider>
+          <GestureHandlerRootView
+            style={[styles.root, isWeb && { backgroundColor: outerBackground }]}
+          >
+            {isWeb ? (
+              <View style={styles.webCenter}>
+                <View style={[styles.webFrame, { backgroundColor: frameBackground }]}>
+                  {appContent}
+                </View>
+              </View>
+            ) : (
+              appContent
+            )}
           </GestureHandlerRootView>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  webCenter: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+  },
+  webFrame: {
+    flex: 1,
+    width: '100%',
+    maxWidth: MOBILE_MAX_WIDTH,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+});
