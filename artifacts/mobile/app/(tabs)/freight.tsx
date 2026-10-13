@@ -24,6 +24,16 @@ export default function FreightScreen() {
   // Otherwise → show freights
   const showMissions = isCarrierActive && isCarrierApproved;
 
+  const [shipperFilter, setShipperFilter] = React.useState<string>('Tous');
+
+  const filteredFreights = React.useMemo(() => {
+    if (shipperFilter === 'Tous') return MOCK_FREIGHTS;
+    if (shipperFilter === 'En attente') return MOCK_FREIGHTS.filter(f => f.status === 'published' || f.status === 'offers_received');
+    if (shipperFilter === 'En transit') return MOCK_FREIGHTS.filter(f => f.status === 'in_transit');
+    if (shipperFilter === 'Livrés') return MOCK_FREIGHTS.filter(f => f.status === 'delivered');
+    return MOCK_FREIGHTS;
+  }, [shipperFilter]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -38,10 +48,10 @@ export default function FreightScreen() {
             {showMissions ? 'Missions disponibles' : 'Mes Frets'}
           </Text>
           {isCarrierActive && isCarrierApproved && (
-            <Text style={[styles.headerSub, { color: colors.primary }]}>Compte Chauffeur</Text>
+            <Text style={[styles.headerSub, { color: colors.primary }]}>Espace Chauffeur / Transporteur</Text>
           )}
           {!isCarrierActive && (
-            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Compte Expéditeur</Text>
+            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Espace Expéditeur (Vos annonces)</Text>
           )}
           </View>
         </View>
@@ -60,7 +70,7 @@ export default function FreightScreen() {
         <View style={[styles.pendingBanner, { backgroundColor: colors.warning + '15', borderBottomColor: colors.warning + '30' }]}>
           <Feather name="clock" size={15} color={colors.warning} />
           <Text style={[styles.pendingText, { color: colors.warning }]}>
-            Votre compte chauffeur est en cours de validation
+            Votre compte chauffeur est en cours de validation par nos équipes
           </Text>
         </View>
       )}
@@ -89,9 +99,22 @@ export default function FreightScreen() {
         />
       ) : (
         <FlatList
-          data={MOCK_FREIGHTS}
+          data={filteredFreights}
           keyExtractor={i => i.id}
           contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + tabBarOffset + 16 }]}
+          ListHeaderComponent={
+            <View style={[styles.filterRow]}>
+              {['Tous', 'En attente', 'En transit', 'Livrés'].map(f => (
+                <Pressable
+                  key={f}
+                  onPress={() => { Haptics.selectionAsync(); setShipperFilter(f); }}
+                  style={[styles.filterChip, { backgroundColor: shipperFilter === f ? colors.primary : colors.muted, borderRadius: 20 }]}
+                >
+                  <Text style={[styles.filterText, { color: shipperFilter === f ? '#FFF' : colors.foreground }]}>{f}</Text>
+                </Pressable>
+              ))}
+            </View>
+          }
           renderItem={({ item }) => (
             <FreightCard
               freight={item}
@@ -101,7 +124,7 @@ export default function FreightScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Feather name="package" size={44} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Aucun fret publié</Text>
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Aucun fret dans cette catégorie</Text>
               <Pressable
                 style={[styles.emptyBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
                 onPress={() => router.push('/shipper/publish')}

@@ -12,7 +12,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { setBaseUrl } from '@workspace/api-client-react';
 
 SplashScreen.preventAutoHideAsync();
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+
+// The API base URL is only needed once the backend is wired up. Guard against
+// building an invalid URL like "https://undefined" when the env var is unset.
+const apiDomain = process.env.EXPO_PUBLIC_DOMAIN;
+if (apiDomain) setBaseUrl(`https://${apiDomain}`);
 
 const queryClient = new QueryClient();
 

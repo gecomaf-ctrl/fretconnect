@@ -1,0 +1,51 @@
+# ============================================================================
+# Render Blueprint — FretConnect CI (version de démonstration)
+# ============================================================================
+# Déploie l'application Expo (React Native Web) sous forme de Static Site.
+# L'app fonctionne avec des données fictives : aucun backend n'est requis.
+#
+# Docs : https://render.com/docs/blueprint-spec
+# ============================================================================
+
+services:
+  - type: web
+    name: fretconnect-ci
+    runtime: static
+    branch: main
+
+    # Monorepo pnpm : on installe à la racine puis on build le paquet mobile.
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @workspace/mobile run build
+
+    # Dossier produit par `expo export --platform web`.
+    staticPublishPath: artifacts/mobile/dist
+
+    envVars:
+      # Même version stable que le socle local (Node 24).
+      - key: NODE_VERSION
+        value: "24.21.0"
+      # Empêche corepack de demander une confirmation interactive.
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0"
+      # Build non interactif (Metro/Expo).
+      - key: CI
+        value: "1"
+      - key: EXPO_NO_TELEMETRY
+        value: "1"
+
+    # L'app est une SPA (expo-router, output "single") : toutes les routes
+    # inconnues doivent renvoyer index.html pour que le routage côté client
+    # fonctionne (ex. /wallet, /shipper/freight/f1, /carrier/mission/m1).
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    # Les bundles Expo sont hachés et immuables : cache long.
+    # index.html doit rester toujours frais pour pointer vers le bon bundle.
+    headers:
+      - path: /_expo/static/*
+        name: Cache-Control
+        value: "public, max-age=31536000, immutable"
+      - path: /index.html
+        name: Cache-Control
+        value: "no-cache"

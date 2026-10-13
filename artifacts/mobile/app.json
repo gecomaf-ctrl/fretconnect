@@ -8,19 +8,35 @@
     "scheme": "mobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fretconnect.ci",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "FretConnect utilise votre position pour localiser les frets et les missions à proximité.",
+        "NSCameraUsageDescription": "FretConnect utilise l'appareil photo pour photographier les marchandises et les preuves de livraison.",
+        "NSPhotoLibraryUsageDescription": "FretConnect accède à vos photos pour joindre des justificatifs et des photos de déchargement."
+      }
     },
-    "android": {},
+    "android": {
+      "package": "com.fretconnect.ci",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": ""
+        }
+      }
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      [
-        "expo-router",
-        {
-          "origin": "https://replit.com/"
-        }
-      ],
+      "expo-router",
       [
         "expo-splash-screen",
         {
@@ -30,7 +46,20 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "FretConnect utilise votre position pour vous afficher les trajets et frets disponibles."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'application a besoin d'accéder à vos photos pour joindre des justificatifs de livraison et de fret.",
+          "cameraPermission": "L'application a besoin d'accéder à l'appareil photo pour prendre des photos des marchandises et des preuves de livraison."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

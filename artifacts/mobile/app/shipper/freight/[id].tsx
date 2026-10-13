@@ -122,12 +122,15 @@ export default function FreightDetailScreen() {
                     </Text>
                   </View>
                 </View>
-                <View style={styles.offerPrice}>
-                  <Text style={[styles.offerAmount, { color: colors.primary }]}>
-                    {formatCFA(offer.amount)}
-                  </Text>
+                <View style={[styles.offerPrice, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '45' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <MaterialCommunityIcons name="cash-multiple" size={13} color={colors.primary} />
+                    <Text style={[styles.offerAmount, { color: colors.primary }]}>
+                      {formatCFA(offer.amount)}
+                    </Text>
+                  </View>
                   {selectedOffer === offer.id && (
-                    <Feather name="check-circle" size={18} color={colors.primary} />
+                    <Feather name="check-circle" size={16} color={colors.primary} />
                   )}
                 </View>
               </Pressable>
@@ -233,7 +236,14 @@ const styles = StyleSheet.create({
   offerName: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   offerMeta: { flexDirection: 'row', gap: 10 },
   offerStat: { fontSize: 11, fontFamily: 'Inter_400Regular' },
-  offerPrice: { alignItems: 'flex-end', gap: 4 },
+  offerPrice: {
+    alignItems: 'flex-end',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
   offerAmount: { fontSize: 14, fontFamily: 'Inter_700Bold' },
   trackRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 },
   trackTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },

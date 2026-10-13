@@ -11,7 +11,6 @@ import { MOCK_MISSIONS } from '@/data/mockData';
 import { Avatar } from '@/components/Avatar';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import TrackingMap from '@/components/TrackingMap';
-import { SignaturePad } from '@/components/SignaturePad';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
@@ -104,47 +103,122 @@ interface DeliveryModalProps {
   missionLabel: string;
   colors: any;
   insets: any;
-  onSuccess: () => void;
+  onSuccess: (photos: string[]) => void;
   onClose: () => void;
 }
+
+const MAX_ATTEMPTS = 3;
 
 function DeliveryModal({
   visible, expectedCode, earnAmount, missionLabel,
   colors, insets, onSuccess, onClose,
 }: DeliveryModalProps) {
   const [code, setCode]           = useState('');
-  const [signed, setSigned]       = useState(false);
-  const [photoUri, setPhotoUri]   = useState<string | null>(null);
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
   const [codeError, setCodeError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
 
   const COMMISSION_RATE = 0.05;
   const commission   = Math.round(earnAmount * COMMISSION_RATE);
   const net          = earnAmount - commission;
 
-  const canSubmit = code.length === 6 && signed && photoUri !== null;
+  const attemptsLeft = Math.max(MAX_ATTEMPTS - failedAttempts, 0);
+  const isLocked = attemptsLeft <= 0;
 
-  const pickPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      // On web permissions always granted
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: false,
-      quality: 0.7,
-    }).catch(() =>
-      // Camera not available on web — fall back to gallery
-      ImagePicker.launchImageLibraryAsync({ allowsEditing: false, quality: 0.7 })
-    );
-    if (!result.canceled && result.assets.length > 0) {
-      setPhotoUri(result.assets[0].uri);
+  const cleanExpected = (expectedCode ?? '').replace(/\D/g, '');
+  const cleanCode = code.replace(/\D/g, '');
+  const isCodeValid = !isLocked && cleanCode.length === 6 && cleanCode === cleanExpected;
+
+  const canSubmit = isCodeValid && photoUris.length > 0 && !isLocked;
+
+  const handleCodeChange = (v: string) => {
+    if (isLocked) return;
+    const digits = v.replace(/\D/g, '').slice(0, 6);
+    setCode(digits);
+    if (digits.length === 6) {
+      if (digits !== cleanExpected) {
+        const nextFailed = failedAttempts + 1;
+        setFailedAttempts(nextFailed);
+        const remainingAttempts = Math.max(MAX_ATTEMPTS - nextFailed, 0);
+        if (remainingAttempts === 0) {
+          setCodeError('Sécurité activée : 3 tentatives échouées. Saisie verrouillée.');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert(
+            'Saisie verrouillée (3/3 tentatives)',
+            'Par mesure de sécurité pour l\'Escrow, le code de livraison a été bloqué après 3 tentatives infructueuses.\n\nVeuillez contacter l\'expéditeur pour vérifier le code exact.',
+            [{ text: 'Compris' }]
+          );
+        } else {
+          setCodeError(`Code incorrect. Plus que ${remainingAttempts} tentative${remainingAttempts > 1 ? 's' : ''} restante${remainingAttempts > 1 ? 's' : ''}.`);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+      } else {
+        setCodeError('');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } else {
+      setCodeError('');
     }
   };
 
+  const takePhotoWithCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted' && Platform.OS !== 'web') {
+        Alert.alert(
+          'Permission caméra requise',
+          "L'accès direct à l'appareil photo est obligatoire pour certifier la remise de la marchandise avec le destinataire.",
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: false,
+        quality: 0.5,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const newUri = result.assets[0].uri;
+        setPhotoUris(prev => [...prev, newUri]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (e) {
+      console.warn('Camera error:', e);
+      Alert.alert('Erreur appareil photo', "Impossible d'activer la caméra. Veuillez réessayer.");
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setPhotoUris(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
-    if (code !== expectedCode) {
-      setCodeError('Code incorrect. Vérifiez avec le destinataire.');
+    if (isLocked) {
+      Alert.alert(
+        'Saisie bloquée',
+        'Le nombre maximum de tentatives a été dépassé (3/3). Veuillez contacter l\'expéditeur ou le support FretConnect.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    if (cleanCode !== cleanExpected) {
+      const nextFailed = failedAttempts + 1;
+      setFailedAttempts(nextFailed);
+      const remainingAttempts = Math.max(MAX_ATTEMPTS - nextFailed, 0);
+      setCodeError(
+        remainingAttempts === 0
+          ? 'Sécurité activée : 3 tentatives échouées. Saisie verrouillée.'
+          : `Code incorrect. Plus que ${remainingAttempts} tentative${remainingAttempts > 1 ? 's' : ''} restante${remainingAttempts > 1 ? 's' : ''}.`
+      );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        'Code de livraison invalide',
+        remainingAttempts === 0
+          ? 'Nombre maximal de tentatives atteint (3/3). La confirmation de livraison est bloquée. Veuillez contacter l\'expéditeur.'
+          : `Le code saisi est incorrect. Il vous reste ${remainingAttempts} tentative${remainingAttempts > 1 ? 's' : ''}.`,
+        [{ text: 'Compris' }]
+      );
       return;
     }
     setCodeError('');
@@ -152,7 +226,7 @@ function DeliveryModal({
     await new Promise(r => setTimeout(r, 900)); // simulate API call
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSubmitting(false);
-    onSuccess();
+    onSuccess(photoUris);
   };
 
   if (!visible) return null;
@@ -180,41 +254,47 @@ function DeliveryModal({
               <Feather name="package" size={28} color={colors.success} />
             </View>
             <Text style={[ss.modalTitle, { color: colors.foreground }]}>
-              Confirmation de livraison
+              Confirmation de livraison & Escrow
             </Text>
             <Text style={[ss.modalSubtitle, { color: colors.mutedForeground }]}>
               {missionLabel}
             </Text>
           </View>
 
-          {/* Code hint for testing */}
-          <View style={[ss.hintBox, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '25' }]}>
-            <Feather name="info" size={14} color={colors.primary} />
-            <Text style={[ss.hintText, { color: colors.primary }]}>
-              L'expéditeur a communiqué ce code au destinataire : <Text style={{ fontFamily: 'Inter_700Bold' }}>{expectedCode}</Text>
-            </Text>
-          </View>
-
-          {/* ── 1. Code de livraison ── */}
-          <View style={[ss.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* ── 1. Code de livraison (Saisi par/avec le destinataire) ── */}
+          <View style={[ss.section, { backgroundColor: colors.card, borderColor: isLocked ? '#EF444460' : colors.border }]}>
             <View style={ss.sectionHeader}>
-              <View style={[ss.sectionNum, { backgroundColor: colors.primary }]}>
+              <View style={[ss.sectionNum, { backgroundColor: isLocked ? '#EF4444' : isCodeValid ? colors.success : colors.primary }]}>
                 <Text style={ss.sectionNumText}>1</Text>
               </View>
-              <Text style={[ss.sectionTitle, { color: colors.foreground }]}>Code de livraison</Text>
+              <Text style={[ss.sectionTitle, { color: colors.foreground, flex: 1 }]}>Code secret du destinataire</Text>
+              <View style={[ss.attemptBadge, {
+                backgroundColor: isLocked ? '#EF444420' : attemptsLeft < MAX_ATTEMPTS ? '#F59E0B20' : colors.primary + '15',
+              }]}>
+                <Text style={[ss.attemptBadgeText, {
+                  color: isLocked ? '#EF4444' : attemptsLeft < MAX_ATTEMPTS ? '#F59E0B' : colors.primary,
+                }]}>
+                  {isLocked ? 'Verrouillé' : `${attemptsLeft}/${MAX_ATTEMPTS} essais`}
+                </Text>
+              </View>
             </View>
             <Text style={[ss.sectionDesc, { color: colors.mutedForeground }]}>
-              Demandez au destinataire de saisir le code à 6 chiffres que l'expéditeur lui a transmis.
+              Demandez au destinataire de vous communiquer ou renseigner le code secret à 6 chiffres qu'il a reçu de l'expéditeur après vérification des colis.
             </Text>
             <View style={[ss.codeInputRow]}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <View key={i} style={[ss.codeBox, {
                   backgroundColor: colors.input,
-                  borderColor: codeError
+                  borderColor: isLocked
                     ? '#EF4444'
+                    : codeError
+                    ? '#EF4444'
+                    : isCodeValid
+                    ? '#10B981'
                     : code.length > i ? colors.primary : colors.border,
+                  opacity: isLocked ? 0.6 : 1,
                 }]}>
-                  <Text style={[ss.codeDigit, { color: colors.foreground }]}>
+                  <Text style={[ss.codeDigit, { color: isLocked ? '#EF4444' : isCodeValid ? '#10B981' : colors.foreground }]}>
                     {code[i] ?? ''}
                   </Text>
                 </View>
@@ -224,84 +304,92 @@ function DeliveryModal({
             <TextInput
               style={ss.hiddenInput}
               value={code}
-              onChangeText={v => { setCode(v.replace(/\D/g, '').slice(0, 6)); setCodeError(''); }}
+              onChangeText={handleCodeChange}
               keyboardType="number-pad"
               maxLength={6}
-              autoFocus
+              editable={!isLocked}
+              autoFocus={!isLocked}
             />
+            {isCodeValid && (
+              <View style={ss.validRow}>
+                <Feather name="check-circle" size={14} color="#10B981" />
+                <Text style={ss.validText}>Code secret vérifié et conforme !</Text>
+              </View>
+            )}
             {codeError !== '' && (
               <View style={ss.errorRow}>
                 <Feather name="alert-circle" size={13} color="#EF4444" />
                 <Text style={ss.errorText}>{codeError}</Text>
               </View>
             )}
+            {isLocked && (
+              <View style={[ss.lockedNotice, { backgroundColor: '#EF444415', borderColor: '#EF444440' }]}>
+                <MaterialCommunityIcons name="shield-lock" size={18} color="#EF4444" />
+                <Text style={[ss.lockedNoticeText, { color: '#EF4444' }]}>
+                  Tentatives épuisées. Contactez l'expéditeur pour authentifier la remise.
+                </Text>
+              </View>
+            )}
           </View>
 
-          {/* ── 2. Signature ── */}
+          {/* ── 2. Photos de déchargement avec le destinataire ── */}
           <View style={[ss.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={ss.sectionHeader}>
-              <View style={[ss.sectionNum, { backgroundColor: signed ? colors.success : colors.primary }]}>
-                {signed
+              <View style={[ss.sectionNum, { backgroundColor: photoUris.length > 0 ? colors.success : colors.primary }]}>
+                {photoUris.length > 0
                   ? <Feather name="check" size={12} color="#FFF" />
                   : <Text style={ss.sectionNumText}>2</Text>
                 }
               </View>
-              <Text style={[ss.sectionTitle, { color: colors.foreground }]}>Signature du destinataire</Text>
+              <Text style={[ss.sectionTitle, { color: colors.foreground }]}>
+                Photos de déchargement ({photoUris.length})
+              </Text>
             </View>
             <Text style={[ss.sectionDesc, { color: colors.mutedForeground }]}>
-              Faites signer le destinataire directement sur l'écran.
-            </Text>
-            <SignaturePad
-              onSigned={setSigned}
-              borderColor={signed ? colors.success + '60' : colors.border}
-              labelColor={colors.mutedForeground}
-              clearColor={colors.mutedForeground}
-              height={150}
-            />
-          </View>
-
-          {/* ── 3. Photo ── */}
-          <View style={[ss.section, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={ss.sectionHeader}>
-              <View style={[ss.sectionNum, { backgroundColor: photoUri ? colors.success : colors.primary }]}>
-                {photoUri
-                  ? <Feather name="check" size={12} color="#FFF" />
-                  : <Text style={ss.sectionNumText}>3</Text>
-                }
-              </View>
-              <Text style={[ss.sectionTitle, { color: colors.foreground }]}>Photo de remise</Text>
-            </View>
-            <Text style={[ss.sectionDesc, { color: colors.mutedForeground }]}>
-              Prenez une photo de la marchandise avec le destinataire.
+              Prenez les photos des marchandises déchargées en présence du destinataire. Ces preuves sont transmises directement à l'expéditeur.
             </Text>
 
-            {photoUri ? (
-              <View>
-                <Image source={{ uri: photoUri }} style={ss.photoPreview} resizeMode="cover" />
-                <Pressable style={ss.retakeBtn} onPress={pickPhoto}>
-                  <Feather name="camera" size={13} color={colors.mutedForeground} />
-                  <Text style={[ss.retakeText, { color: colors.mutedForeground }]}>Reprendre la photo</Text>
-                </Pressable>
+            {photoUris.length > 0 && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                {photoUris.map((uri, idx) => (
+                  <View key={idx} style={{ position: 'relative', width: 90, height: 90 }}>
+                    <Image source={{ uri }} style={{ width: 90, height: 90, borderRadius: 10 }} resizeMode="cover" />
+                    <Pressable
+                      style={{
+                        position: 'absolute', top: -6, right: -6, width: 22, height: 22,
+                        borderRadius: 11, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center',
+                      }}
+                      onPress={() => removePhoto(idx)}
+                    >
+                      <Feather name="x" size={12} color="#FFF" />
+                    </Pressable>
+                  </View>
+                ))}
               </View>
-            ) : (
-              <Pressable
-                style={[ss.photoBtn, { backgroundColor: colors.muted, borderColor: colors.border }]}
-                onPress={pickPhoto}
-              >
-                <Feather name="camera" size={22} color={colors.primary} />
-                <Text style={[ss.photoBtnText, { color: colors.foreground }]}>Prendre une photo</Text>
-                <Text style={[ss.photoBtnSub, { color: colors.mutedForeground }]}>
-                  Appareil photo ou galerie
-                </Text>
-              </Pressable>
             )}
+
+            <Pressable
+              style={[ss.photoBtn, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '50' }]}
+              onPress={takePhotoWithCamera}
+            >
+              <Feather name="camera" size={24} color={colors.primary} />
+              <Text style={[ss.photoBtnText, { color: colors.primary }]}>
+                {photoUris.length > 0 ? 'Prendre une photo supplémentaire' : 'Prendre photo de déchargement'}
+              </Text>
+              <Text style={[ss.photoBtnSub, { color: colors.mutedForeground }]}>
+                Prise de vue directe obligatoire par caméra (avec le destinataire)
+              </Text>
+            </Pressable>
           </View>
 
-          {/* ── Payment summary ── */}
+          {/* ── Récapitulatif Déblocage Escrow ── */}
           <View style={[ss.paymentCard, { backgroundColor: colors.success + '08', borderColor: colors.success + '25' }]}>
-            <Text style={[ss.paymentTitle, { color: colors.foreground }]}>Récapitulatif de paiement</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <MaterialCommunityIcons name="lock-open-check" size={18} color={colors.success} />
+              <Text style={[ss.paymentTitle, { color: colors.foreground }]}>Déblocage de l'Escrow</Text>
+            </View>
             <View style={ss.paymentRow}>
-              <Text style={[ss.paymentLabel, { color: colors.mutedForeground }]}>Montant mission</Text>
+              <Text style={[ss.paymentLabel, { color: colors.mutedForeground }]}>Montant bloqué sous séquestre</Text>
               <Text style={[ss.paymentValue, { color: colors.foreground }]}>{earnAmount.toLocaleString('fr-FR')} FCFA</Text>
             </View>
             <View style={ss.paymentRow}>
@@ -310,7 +398,7 @@ function DeliveryModal({
             </View>
             <View style={[ss.paymentDivider, { backgroundColor: colors.success + '30' }]} />
             <View style={ss.paymentRow}>
-              <Text style={[ss.paymentLabel, { color: colors.foreground, fontFamily: 'Inter_600SemiBold' }]}>Net versé sur votre wallet</Text>
+              <Text style={[ss.paymentLabel, { color: colors.foreground, fontFamily: 'Inter_700Bold' }]}>Net crédité instantanément</Text>
               <Text style={[ss.paymentNet, { color: colors.success }]}>{net.toLocaleString('fr-FR')} FCFA</Text>
             </View>
           </View>
@@ -326,12 +414,12 @@ function DeliveryModal({
             disabled={!canSubmit || submitting}
           >
             {submitting ? (
-              <Text style={[ss.submitText, { color: '#FFF' }]}>Traitement en cours…</Text>
+              <Text style={[ss.submitText, { color: '#FFF' }]}>Déblocage de l'escrow en cours…</Text>
             ) : (
               <>
-                <Feather name="check-circle" size={20} color={canSubmit ? '#FFF' : colors.mutedForeground} />
+                <MaterialCommunityIcons name="lock-open-variant" size={20} color={canSubmit ? '#FFF' : colors.mutedForeground} />
                 <Text style={[ss.submitText, { color: canSubmit ? '#FFF' : colors.mutedForeground }]}>
-                  Valider la livraison et recevoir le paiement
+                  Valider la livraison & Débloquer le paiement
                 </Text>
               </>
             )}
@@ -340,10 +428,8 @@ function DeliveryModal({
           {!canSubmit && (
             <Text style={[ss.incompleteHint, { color: colors.mutedForeground }]}>
               {!code || code.length < 6
-                ? '⟳  Entrez le code à 6 chiffres'
-                : !signed
-                ? '✍  Faites signer le destinataire'
-                : '📷  Prenez la photo de remise'}
+                ? '⟳  1. Demandez et entrez le code à 6 chiffres'
+                : '📷  2. Prenez au moins une photo de déchargement'}
             </Text>
           )}
         </ScrollView>
@@ -591,7 +677,7 @@ export default function CarrierTrackingScreen() {
               { icon: 'package',     label: 'Marchandise',  value: mission.cargo },
               { icon: 'layers',      label: 'Poids',        value: `${mission.weight.toLocaleString()} kg` },
               { icon: 'credit-card', label: 'Rémunération', value: `${earnAmount.toLocaleString('fr-FR')} FCFA` },
-              { icon: 'key',         label: 'Code livraison', value: mission.deliveryCode ?? '—' },
+              { icon: 'shield',      label: 'Sécurité Escrow', value: 'Débloqué à la remise conforme' },
             ].map(r => (
               <View key={r.label} style={ss.detailRow}>
                 <Feather name={r.icon as any} size={14} color={colors.primary} />
@@ -777,8 +863,32 @@ const ss = StyleSheet.create({
   sectionTitle: {
     fontSize: 15, fontFamily: 'Inter_600SemiBold',
   },
+  attemptBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  attemptBadgeText: {
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
+  },
   sectionDesc: {
     fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18,
+  },
+  lockedNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  lockedNoticeText: {
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
+    flex: 1,
+    lineHeight: 16,
   },
 
   codeInputRow: {
@@ -795,10 +905,16 @@ const ss = StyleSheet.create({
     position: 'absolute', opacity: 0, width: 1, height: 1,
   },
   errorRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4,
   },
   errorText: {
-    fontSize: 12, fontFamily: 'Inter_400Regular', color: '#EF4444',
+    fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#EF4444', flex: 1,
+  },
+  validRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4,
+  },
+  validText: {
+    fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#10B981', flex: 1,
   },
 
   photoBtn: {
@@ -810,6 +926,20 @@ const ss = StyleSheet.create({
   },
   photoBtnSub: {
     fontSize: 11, fontFamily: 'Inter_400Regular',
+  },
+  photoActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  photoActionText: {
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
   },
   photoPreview: {
     width: '100%', height: 160, borderRadius: 12,

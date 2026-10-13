@@ -2,16 +2,25 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, Platform, Pressable } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/contexts/AuthContext';
 import { NotificationItem } from '@/components/NotificationItem';
-import { MOCK_NOTIFICATIONS, AppNotification } from '@/data/mockData';
+import { MOCK_SHIPPER_NOTIFICATIONS, MOCK_CARRIER_NOTIFICATIONS, AppNotification } from '@/data/mockData';
 import { Feather } from '@expo/vector-icons';
 import { MenuButton } from '@/components/SideMenu';
 
 export default function NotificationsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [notifications, setNotifications] = useState<AppNotification[]>(MOCK_NOTIFICATIONS);
+  const { user } = useAuth();
+  const isCarrier = user?.activeAccount === 'carrier';
+
+  const initialList = isCarrier ? MOCK_CARRIER_NOTIFICATIONS : MOCK_SHIPPER_NOTIFICATIONS;
+  const [notifications, setNotifications] = useState<AppNotification[]>(initialList);
   const tabBarOffset = 20;
+
+  React.useEffect(() => {
+    setNotifications(isCarrier ? MOCK_CARRIER_NOTIFICATIONS : MOCK_SHIPPER_NOTIFICATIONS);
+  }, [isCarrier]);
 
   const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));

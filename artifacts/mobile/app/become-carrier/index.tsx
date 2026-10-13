@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, Platform,
+  View, Text, StyleSheet, ScrollView, Pressable, Platform, Image, Alert,
 } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { Button } from '@/components/Button';
 import { router } from 'expo-router';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 
 const TOTAL_STEPS = 7;
 
@@ -61,14 +62,88 @@ function SelectChips({ options, value, onChange }: SelectChipsProps) {
   );
 }
 
-function DocUploadPlaceholder({ label }: { label: string }) {
+function DocUploader({ label, value, onChange }: { label: string; value?: string; onChange?: (uri: string) => void }) {
   const colors = useColors();
+  const [localUri, setLocalUri] = useState<string | null>(value || null);
+
+  const handlePick = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted' && Platform.OS !== 'web') {
+        Alert.alert('Permission requise', "L'accès à la galerie photo est nécessaire pour importer un document.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: false,
+        quality: 0.5,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setLocalUri(uri);
+        onChange?.(uri);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (e) {
+      console.warn('Error uploading doc:', e);
+    }
+  };
+
+  const handleCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted' && Platform.OS !== 'web') {
+        Alert.alert('Permission requise', "L'accès à l'appareil photo est nécessaire.");
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        quality: 0.5,
+        allowsEditing: false,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uri = result.assets[0].uri;
+        setLocalUri(uri);
+        onChange?.(uri);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (e) {
+      console.warn('Error launching camera:', e);
+    }
+  };
+
+  if (localUri) {
+    return (
+      <View style={[styles.docUploadedBox, { backgroundColor: colors.card, borderColor: colors.success, borderRadius: colors.radius }]}>
+        <Image source={{ uri: localUri }} style={styles.docThumb} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Feather name="check-circle" size={16} color={colors.success} />
+            <Text style={[styles.docUploadedTitle, { color: colors.foreground }]} numberOfLines={1}>{label}</Text>
+          </View>
+          <Text style={[styles.docUploadedSub, { color: colors.success }]}>Document importé</Text>
+        </View>
+        <Pressable onPress={handlePick} style={[styles.docChangeBtn, { backgroundColor: colors.muted }]}>
+          <Text style={[styles.docChangeText, { color: colors.foreground }]}>Changer</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
-    <Pressable style={[styles.docUpload, { backgroundColor: colors.input, borderColor: colors.border, borderRadius: colors.radius }]}>
-      <Feather name="upload-cloud" size={22} color={colors.mutedForeground} />
-      <Text style={[styles.docLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <Text style={[styles.docHint, { color: colors.mutedForeground }]}>JPG, PNG ou PDF</Text>
-    </Pressable>
+    <View style={[styles.docUpload, { backgroundColor: colors.input, borderColor: colors.border, borderRadius: colors.radius }]}>
+      <Feather name="upload-cloud" size={24} color={colors.primary} />
+      <Text style={[styles.docLabel, { color: colors.foreground }]}>{label}</Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+        <Pressable onPress={handleCamera} style={[styles.docActionMini, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="camera" size={14} color={colors.primary} />
+          <Text style={[styles.docActionMiniText, { color: colors.foreground }]}>Photo</Text>
+        </Pressable>
+        <Pressable onPress={handlePick} style={[styles.docActionMini, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Feather name="image" size={14} color={colors.primary} />
+          <Text style={[styles.docActionMiniText, { color: colors.foreground }]}>Galerie</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -78,6 +153,7 @@ export default function BecomeCarrierScreen() {
   const { submitCarrierRequest } = useAuth();
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [docs, setDocs] = useState<Record<string, string>>({});
   const [form, setForm] = useState<FormData>({
     firstName: '', lastName: '', phone: '', email: '', address: '',
     idType: '', idNumber: '', idExpiry: '',
@@ -87,6 +163,7 @@ export default function BecomeCarrierScreen() {
   });
 
   const set = (key: keyof FormData) => (v: string) => setForm(f => ({ ...f, [key]: v }));
+  const setDoc = (key: string) => (uri: string) => setDocs(d => ({ ...d, [key]: uri }));
 
   const goNext = () => {
     if (step < TOTAL_STEPS) { setStep(s => s + 1); Haptics.selectionAsync(); }
@@ -119,13 +196,7 @@ export default function BecomeCarrierScreen() {
             <Feather name="clock" size={18} color={colors.warning} />
             <Text style={[styles.statusText, { color: colors.warning }]}>En attente de validation</Text>
           </View>
-          <Button
-            label="Retour à l'accueil"
-            onPress={() => { router.dismissAll(); router.replace('/(tabs)'); }}
-            fullWidth
-            size="lg"
-            style={{ marginTop: 16 }}
-          />
+          <Button label="Retour au profil" onPress={() => router.replace('/(tabs)/profile')} fullWidth size="lg" />
         </View>
       </View>
     );
@@ -142,26 +213,22 @@ export default function BecomeCarrierScreen() {
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <Text style={[styles.stepCount, { color: colors.mutedForeground }]}>Étape {step}/{TOTAL_STEPS}</Text>
+          <Text style={[styles.stepCount, { color: colors.mutedForeground }]}>Étape {step} sur {TOTAL_STEPS}</Text>
           <Text style={[styles.stepTitle, { color: colors.foreground }]}>{STEP_TITLES[step - 1]}</Text>
         </View>
-        <View style={{ width: 36 }} />
+        <View style={{ width: 34 }} />
       </View>
 
-      {/* Progress bar */}
+      {/* Progress track */}
       <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
         <View style={[styles.progressFill, { backgroundColor: colors.primary, width: `${(step / TOTAL_STEPS) * 100}%` as any }]} />
       </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 120 }]}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + 120 }]} keyboardShouldPersistTaps="handled">
         {step === 1 && (
           <View style={styles.fields}>
-            <Input label="Prénom" value={form.firstName} onChangeText={set('firstName')} placeholder="Kofi" icon="user" autoCapitalize="words" />
-            <Input label="Nom" value={form.lastName} onChangeText={set('lastName')} placeholder="Mensah" icon="user" autoCapitalize="words" />
+            <Input label="Prénom" value={form.firstName} onChangeText={set('firstName')} placeholder="Amadou" icon="user" />
+            <Input label="Nom" value={form.lastName} onChangeText={set('lastName')} placeholder="Koné" icon="user" />
             <Input label="Téléphone" value={form.phone} onChangeText={set('phone')} placeholder="+225 07 00 00 00" icon="phone" keyboardType="phone-pad" />
             <Input label="Email" value={form.email} onChangeText={set('email')} placeholder="votre@email.com" icon="mail" keyboardType="email-address" autoCapitalize="none" />
             <Input label="Adresse" value={form.address} onChangeText={set('address')} placeholder="Abidjan, Cocody" icon="map-pin" />
@@ -173,7 +240,7 @@ export default function BecomeCarrierScreen() {
             <SelectChips options={ID_TYPES} value={form.idType} onChange={set('idType')} />
             <Input label="Numéro" value={form.idNumber} onChangeText={set('idNumber')} placeholder="CI-123456789" icon="credit-card" />
             <Input label="Date d'expiration" value={form.idExpiry} onChangeText={set('idExpiry')} placeholder="JJ/MM/AAAA" icon="calendar" />
-            <DocUploadPlaceholder label="Photo de la pièce d'identité (recto/verso)" />
+            <DocUploader label="Photo de la pièce d'identité (recto/verso)" value={docs['idCard']} onChange={setDoc('idCard')} />
           </View>
         )}
         {step === 3 && (
@@ -182,7 +249,7 @@ export default function BecomeCarrierScreen() {
             <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Catégorie</Text>
             <SelectChips options={LICENSE_CATEGORIES} value={form.licenseCategory} onChange={set('licenseCategory')} />
             <Input label="Date d'expiration" value={form.licenseExpiry} onChangeText={set('licenseExpiry')} placeholder="JJ/MM/AAAA" icon="calendar" />
-            <DocUploadPlaceholder label="Photo du permis de conduire" />
+            <DocUploader label="Photo du permis de conduire" value={docs['license']} onChange={setDoc('license')} />
           </View>
         )}
         {step === 4 && (
@@ -198,10 +265,10 @@ export default function BecomeCarrierScreen() {
         )}
         {step === 5 && (
           <View style={styles.fields}>
-            <DocUploadPlaceholder label="Carte grise du véhicule" />
-            <DocUploadPlaceholder label="Attestation d'assurance" />
-            <DocUploadPlaceholder label="Visite technique (si applicable)" />
-            <DocUploadPlaceholder label="Photos du véhicule (3 minimum)" />
+            <DocUploader label="Carte grise du véhicule" value={docs['carteGrise']} onChange={setDoc('carteGrise')} />
+            <DocUploader label="Attestation d'assurance" value={docs['assurance']} onChange={setDoc('assurance')} />
+            <DocUploader label="Visite technique (si applicable)" value={docs['visite']} onChange={setDoc('visite')} />
+            <DocUploader label="Photos du véhicule" value={docs['vehiculePhoto']} onChange={setDoc('vehiculePhoto')} />
           </View>
         )}
         {step === 6 && (
@@ -211,30 +278,34 @@ export default function BecomeCarrierScreen() {
             </Text>
             <Input label="Nom de l'entreprise (optionnel)" value={form.companyName} onChangeText={set('companyName')} placeholder="Mon Transport SARL" icon="briefcase" />
             <Input label="RCCM (optionnel)" value={form.rccm} onChangeText={set('rccm')} placeholder="CI-ABJ-2020-B-12345" icon="file-text" />
-            <DocUploadPlaceholder label="Attestation fiscale (optionnel)" />
-            <DocUploadPlaceholder label="Autres documents (optionnel)" />
+            <DocUploader label="Attestation fiscale (optionnel)" value={docs['attestationFiscale']} onChange={setDoc('attestationFiscale')} />
+            <DocUploader label="Autres documents (optionnel)" value={docs['autresDocs']} onChange={setDoc('autresDocs')} />
           </View>
         )}
         {step === 7 && (
           <View style={styles.fields}>
             <Text style={[styles.summaryNote, { color: colors.mutedForeground }]}>
-              Vérifiez vos informations avant de soumettre votre demande.
+              Vérifiez attentivement les informations ci-dessous avant de soumettre votre demande.
             </Text>
             {[
-              { label: 'Nom complet', value: `${form.firstName} ${form.lastName}` },
-              { label: 'Téléphone', value: form.phone },
-              { label: 'Type de véhicule', value: form.vehicleType },
-              { label: 'Immatriculation', value: form.vehiclePlate },
+              { label: 'Nom complet', value: `${form.firstName} ${form.lastName}`.trim() || 'Non renseigné' },
+              { label: 'Téléphone', value: form.phone || 'Non renseigné' },
+              { label: 'Pièce', value: `${form.idType || 'CNI'} - ${form.idNumber || 'Non renseigné'}` },
+              { label: 'Permis', value: `${form.licenseNumber || 'Non renseigné'} (Cat. ${form.licenseCategory || 'B'})` },
+              { label: 'Véhicule', value: `${form.vehicleBrand} ${form.vehicleModel} (${form.vehicleType})`.trim() || 'Non renseigné' },
+              { label: 'Immatriculation', value: form.vehiclePlate || 'Non renseigné' },
+              { label: 'Charge utile', value: form.vehiclePayload ? `${form.vehiclePayload} kg` : 'Non renseigné' },
+              { label: 'Documents joints', value: `${Object.keys(docs).length} document(s)` },
             ].map(r => (
               <View key={r.label} style={[styles.summaryRow, { borderBottomColor: colors.border }]}>
                 <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{r.label}</Text>
-                <Text style={[styles.summaryValue, { color: colors.foreground }]}>{r.value || '—'}</Text>
+                <Text style={[styles.summaryValue, { color: colors.foreground }]}>{r.value}</Text>
               </View>
             ))}
             <View style={[styles.termsBox, { backgroundColor: colors.muted, borderRadius: colors.radius }]}>
-              <Feather name="info" size={16} color={colors.mutedForeground} />
+              <Feather name="shield" size={18} color={colors.primary} />
               <Text style={[styles.termsText, { color: colors.mutedForeground }]}>
-                En soumettant, vous acceptez d'être vérifié par notre équipe et que vos documents soient examinés.
+                En soumettant cette demande, vous certifiez l'exactitude des informations et documents fournis.
               </Text>
             </View>
           </View>
@@ -278,11 +349,52 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 14, paddingVertical: 8 },
   chipText: { fontSize: 13, fontFamily: 'Inter_500Medium' },
   docUpload: {
-    borderWidth: 1.5, borderStyle: 'dashed', padding: 20,
-    alignItems: 'center', gap: 8,
+    borderWidth: 1.5, borderStyle: 'dashed', padding: 18,
+    alignItems: 'center', gap: 6,
   },
   docLabel: { fontSize: 14, fontFamily: 'Inter_500Medium', textAlign: 'center' },
-  docHint: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  docActionMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  docActionMiniText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+  },
+  docUploadedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  docThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+  },
+  docUploadedTitle: {
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  docUploadedSub: {
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+  },
+  docChangeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  docChangeText: {
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+  },
   optionalNote: { fontSize: 13, fontFamily: 'Inter_400Regular', padding: 12, lineHeight: 20 },
   summaryNote: { fontSize: 14, fontFamily: 'Inter_400Regular', lineHeight: 20, marginBottom: 8 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1 },

@@ -47,3 +47,13 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Environment variables (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Expo / Render build output
+dist/
+artifacts/mobile/dist/
+render-build-cache/
